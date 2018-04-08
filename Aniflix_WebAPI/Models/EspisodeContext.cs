@@ -8,7 +8,7 @@ namespace Aniflix_WebAPI.Models
 {
     public class EpisodeContext : DbContext
     {
-        public EpisodeContext(DbContextOptions<EpisodeContext> options): base (options) 
+        public EpisodeContext(DbContextOptions<AniContext> options): base (options) 
         {
 
         }

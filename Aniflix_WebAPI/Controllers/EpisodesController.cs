@@ -14,9 +14,9 @@ namespace Aniflix_WebAPI.Controllers
     [Route("api/[controller]")]
     public class EpisodesController : Controller
     {
-        private readonly EpisodeContext _context;
+        private readonly AniContext _context;
 
-        public EpisodesController(EpisodeContext context)
+        public EpisodesController(AniContext context)
         {
             _context = context;
         }
@@ -29,16 +29,16 @@ namespace Aniflix_WebAPI.Controllers
             {
                 // Get all episodes that are not already in the database
                 
-                foreach (Episode epi in AnilinkzConnector.Connector.GetList())
+                foreach (Episode epi in AnilinkzConnector.Connector.GetEpisodesList())
                 {
                     if (_context.Episodes.Find(epi.Id) == null)
                     {
                         _context.Add(epi);
-                        System.Diagnostics.Debug.WriteLine($"ADDED {epi.Id} {epi.Anime} {epi.Title}");
+                        System.Diagnostics.Debug.WriteLine($"ADDED {epi.Id} {epi.AnimeTitle} {epi.Title}");
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"REFUSED {epi.Id} {epi.Anime} {epi.Title}");
+                        System.Diagnostics.Debug.WriteLine($"REFUSED {epi.Id} {epi.AnimeTitle} {epi.Title}");
                     }
                         
                 }
@@ -51,14 +51,14 @@ namespace Aniflix_WebAPI.Controllers
 
         // GET: api/Episodes/5
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetEpisode([FromRoute] int id)
+        public async Task<IActionResult> GetEpisode([FromRoute] string id)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
             
-            var episode = await _context.Episodes.SingleOrDefaultAsync(m => m.Id == id);
+            var episode = await _context.Episodes.SingleAsync(m => m.Id == id);
             
 
             if (episode == null)
@@ -79,7 +79,7 @@ namespace Aniflix_WebAPI.Controllers
 
         // PUT: api/Episodes/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutEpisode([FromRoute] int id, [FromBody] Episode episode)
+        public async Task<IActionResult> PutEpisode([FromRoute] string id, [FromBody] Episode episode)
         {
             if (!ModelState.IsValid)
             {
@@ -129,7 +129,7 @@ namespace Aniflix_WebAPI.Controllers
 
         // DELETE: api/Episodes/5
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteEpisode([FromRoute] int id)
+        public async Task<IActionResult> DeleteEpisode([FromRoute] string id)
         {
             if (!ModelState.IsValid)
             {
@@ -148,7 +148,7 @@ namespace Aniflix_WebAPI.Controllers
             return Ok(episode);
         }
 
-        private bool EpisodeExists(int id)
+        private bool EpisodeExists(string id)
         {
             return _context.Episodes.Any(e => e.Id == id);
         }

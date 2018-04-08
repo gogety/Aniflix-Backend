@@ -4,12 +4,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Aniflix_WebAPI.Logic
+namespace Aniflix_WebAPI.Logic.Connectors
 {
     public abstract class BaseConnector
     {
         protected string _baseURL;
         protected abstract Episode CreateEpisode(Object obj);
+        protected abstract Anime CreateAnime(Object obj);
         protected string FormatHttp(string url)
         {
             //When sent with a //url format, assume is is https
@@ -20,7 +21,9 @@ namespace Aniflix_WebAPI.Logic
             return url;
         }
 
-        public abstract List<Episode> GetList();
+        public abstract List<Episode> GetEpisodesList();
+        public abstract List<Anime> GetAnimesList(AniContext context);
+        public abstract void LoadAnimesList(AniContext context);
         public abstract string GetVideo(Episode episode);
 
     }

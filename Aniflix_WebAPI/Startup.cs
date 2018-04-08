@@ -30,8 +30,18 @@ namespace Aniflix_WebAPI
             //services.AddMvc()
             //  .AddXmlDataContractSerializerFormatters() ;
 
-            services.AddMvc();
-            services.AddDbContext<EpisodeContext>(options => options.UseInMemoryDatabase("Episodes"));
+            services.AddMvc()
+                // Necessary to avoid issues with infinite loops of json serialization
+                // see https://docs.microsoft.com/en-us/ef/core/querying/related-data
+                .AddJsonOptions(
+                    options => options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore
+                    );
+
+            //services.AddDbContext<AniContext>(options => options.UseSqlite("DataSource=:memory:"));
+            services.AddDbContext<AniContext>(options => options.UseInMemoryDatabase("Ani"));
+            //services.AddDbContext<EpisodeContext>(options => options.UseInMemoryDatabase("Episodes"));
+            //services.AddDbContext<AnimeContext>(options => options.UseInMemoryDatabase("Animes"));
+            
             // CORS are necessary for cross domain web sites communications
             // see https://docs.microsoft.com/en-us/aspnet/core/security/cors
             services.AddCors();
