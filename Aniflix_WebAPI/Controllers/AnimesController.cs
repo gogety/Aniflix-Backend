@@ -23,7 +23,7 @@ namespace Aniflix_WebAPI.Controllers
 
         // GET: api/Animes
         [HttpGet]
-        public IEnumerable<Anime> GetAnimes()
+        public IEnumerable<Anime> GetAnimes(int? more = 0)
         {
             BaseConnector connector = AnilinkzConnector.Connector;
             //List<Anime> list = connector.GetAnimesList(_aniContext);
@@ -53,8 +53,16 @@ namespace Aniflix_WebAPI.Controllers
             //    //    }
             //    //}
             //}
-            connector.LoadAnimesList(_context);
-            _context.SaveChanges();
+
+            //more logic needs to change. Currently, 0 => just load whatever is already in the db; 1 => load one more page; 2 => load many more pages
+            if (_context.Animes.Count() == 0)
+                more = 1;
+            if (more >0)
+            {
+                connector.LoadAnimesList(_context, (more==2));
+                _context.SaveChanges();
+            }
+           
             // we need to include the episodes, otherwise they are not loaded
             // see https://docs.microsoft.com/en-us/ef/core/querying/related-data
             return _context.Animes.Include(a => a.Episodes);

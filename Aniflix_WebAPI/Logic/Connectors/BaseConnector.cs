@@ -23,7 +23,7 @@ namespace Aniflix_WebAPI.Logic.Connectors
 
         public abstract List<Episode> GetEpisodesList();
         public abstract List<Anime> GetAnimesList(AniContext context);
-        public abstract void LoadAnimesList(AniContext context);
+        public abstract void LoadAnimesList(AniContext context, bool loadBulk);
         public abstract string GetVideo(Episode episode);
 
     }

@@ -13,6 +13,8 @@ namespace Aniflix_WebAPI.Logic.Connectors
     {
         private static BaseConnector connector;
 
+        private int _lastPageLoaded;
+
         private bool _filterUncensored;
 
         private string _baseURLMobile;
@@ -22,6 +24,7 @@ namespace Aniflix_WebAPI.Logic.Connectors
             _baseURL = "http://anilinkz.to";
             _baseURLMobile = "http://m.anilinkz.to";
             _filterUncensored = true;
+            _lastPageLoaded = 0;
         }
 
         public static BaseConnector Connector {
@@ -88,7 +91,7 @@ namespace Aniflix_WebAPI.Logic.Connectors
                 Id = DataHelper.CreateMD5(animeTitle),
                 HomeUrl = homeURL,
                 ImgUrl = imgURL,
-                Mature = animeTitle.ToLower().Contains("Uncensored")
+                Mature = animeTitle.ToLower().Contains("uncensored")
             };
         }
 
@@ -96,36 +99,29 @@ namespace Aniflix_WebAPI.Logic.Connectors
         {
             if (!String.IsNullOrEmpty(episode.VideoURL))
                 return episode.VideoURL;
-            //using (BrowserManager browser = new BrowserManager(true))
-            //{
-                string sMangoAnilinkzLink = getSMangoAnilinkzLink(episode.DetailsURL);
-                // string sMangoSourceLink = getSMangoSourceLink(sMangoAnilinkzLink);
-                //string sMangoVideoLink = getSMangoVideoLink(sMangoSourceLink);
-                string sMangoSourceLink = BrowserHelper.ExecuteWebRequestHTTPWithJs(FormatHttp(sMangoAnilinkzLink), xPathFilter : "//*[@class='spart']/iframe", attribute:"src", timeout: 10);
-                string sMangoVideoLink = BrowserHelper.ExecuteWebRequestHTTPWithJs(FormatHttp(sMangoSourceLink), xPathFilter: "//*[@id='mgvideo_html5_api']", attribute: "src", timeout : 10 );
-                // TODO : error handling
-                if (!sMangoVideoLink.Contains("ERROR"))
-                    episode.VideoURL = FormatHttp(sMangoVideoLink);
-            //}
+            string sourcePageURL = getSourcePageURL(episode.DetailsURL, "4up");
+            //sMango sources do not link the video directly, it is necessary to load the linked page to get to the source file
+            string sourceHostURL = BrowserHelper.ExecuteWebRequestHTTPWithJs(FormatHttp(sourcePageURL), xPathFilter : "//*[@class='spart']/iframe", attribute:"src", timeout: 10);
+            //string sMangoVideoLink = BrowserHelper.ExecuteWebRequestHTTPWithJs(FormatHttp(sMangoSourceLink), xPathFilter: "//*[@id='mgvideo_html5_api']", attribute: "src", timeout : 10 );
+            string videoURL = BrowserHelper.ExecuteWebRequestHTTPWithJs(FormatHttp(sourceHostURL), xPathFilter: "//*[@class='jw-video jw-reset']", attribute: "src", timeout : 10 );
+
+            // TODO : error handling
+            if (!videoURL.Contains("ERROR"))
+                episode.VideoURL = FormatHttp(videoURL);
             return episode.VideoURL;
 
         }
 
-        public override void LoadAnimesList(AniContext context)
+        public override void LoadAnimesList(AniContext context, bool loadBulk = false)
         {
             if (context.Animes.Count() == 0)
             {
-                getAndLoadTrendingAndLatestEpisodes(context);
+                _lastPageLoaded = 0;
             }
-            else if(context.Animes.Count() <=35) 
-            {
-                getAndLoadMoreTrendingAndLatestEpisodes(context);
-            }
-            
-            
+            getAndLoadTrendingAndLatestEpisodes(context, loadBulk);
         }
        
-        private string getSMangoAnilinkzLink(string urlSuffix)
+        private string getSourcePageURL(string urlSuffix, string source)
         {
             List<HtmlNode> SMParams = new List<HtmlNode>();
 
@@ -135,27 +131,26 @@ namespace Aniflix_WebAPI.Logic.Connectors
             SMParams = sources.Descendants("a").ToList<HtmlNode>();
             //the first sMango link is usually better quality but also slower...
             //HtmlNode sMangoFirstSource = SMParams.FirstOrDefault(e => e.InnerText == "sMango");
-            SMParams = SMParams.Where(e => e.InnerText == "sMango").ToList();
-            HtmlNode sMangoFirstSource = SMParams.Count>1 ? SMParams[1]:SMParams[0];
+            //SMParams = SMParams.Where(e => e.InnerText == "sMango").ToList();
+            SMParams = SMParams.Where(e => e.InnerText == source).ToList();
+            HtmlNode sMangoFirstSource = SMParams.Count>1 ? SMParams[0]:SMParams[0];
 
             return sMangoFirstSource.Attributes["href"].Value;
         }
 
-        private void getAndLoadTrendingAndLatestEpisodes(AniContext context)
+        private void getAndLoadTrendingAndLatestEpisodes(AniContext context, bool loadBulk)
         {
-            HtmlDocument doc = BrowserHelper.ExecuteWebRequestHTTPWithJsDoc(_baseURL, xPathWaitFor: "//ul[@id='trendinglist']");
-            extractAndLoadTrendingEpisodes(doc,context);
-            extractAndLoadLatestEpisodes(doc, context);
-           // getAndLoadLatestEpisodes(context, 2, 6);
+            if (_lastPageLoaded == 0)
+            {
+                HtmlDocument doc = BrowserHelper.ExecuteWebRequestHTTPWithJsDoc(_baseURL, xPathWaitFor: "//ul[@id='trendinglist']");
+                extractAndLoadTrendingEpisodes(doc, context);
+                extractAndLoadLatestEpisodes(doc, context);
+                _lastPageLoaded++;
+            }
+            else
+                getAndLoadLatestEpisodes(context, ++_lastPageLoaded, _lastPageLoaded+(loadBulk?10:0));
         }
 
-        private void getAndLoadMoreTrendingAndLatestEpisodes(AniContext context)
-        {
-            HtmlDocument doc = BrowserHelper.ExecuteWebRequestHTTPWithJsDoc(_baseURL, xPathWaitFor: "//ul[@id='trendinglist']");
-            //extractAndLoadTrendingEpisodes(doc, context);
-            //extractAndLoadLatestEpisodes(doc, context);
-            getAndLoadLatestEpisodes(context, 2, 6);
-        }
 
         private void getAndLoadLatestEpisodes(AniContext context, int page = 1, int upToPage = 1)
         {
@@ -167,8 +162,11 @@ namespace Aniflix_WebAPI.Logic.Connectors
             HtmlDocument doc = BrowserHelper.ExecuteWebRequestHTTPWithJsDoc($"{_baseURL}/?p={page}", "//ul[@id='latestlist']");
             extractAndLoadLatestEpisodes(doc, context);
 
+            _lastPageLoaded = upToPage;
+
             if (page == upToPage)
             {
+                
                 return;
             }
 
