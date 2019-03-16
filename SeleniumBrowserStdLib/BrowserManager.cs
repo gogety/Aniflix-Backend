@@ -33,12 +33,12 @@ namespace SeleniumBrowserStdLib
             //Create chrome driver
             ChromeOptions chromeOptions = new ChromeOptions();
 
-            if (useAdBlock) chromeOptions.AddArgument("user-data-dir=C:\\Selenium\\BrowserProfile");
+            if (useAdBlock) chromeOptions.AddArgument("user-data-dir=E:\\Selenium\\BrowserProfile");
 
             chromeOptions.AddArgument("disable-gpu");
             //Do not wait for page to load completely, as we handle the wait ourselves
             chromeOptions.PageLoadStrategy = PageLoadStrategy.None;
-            ChromeDriverService chromeDriverService = ChromeDriverService.CreateDefaultService("C:\\Users\\Sam\\Documents\\Visual Studio 2017\\Projects\\Aniflix\\SeleniumBrowserStdLib\\bin\\Debug\\netstandard2.0");
+            ChromeDriverService chromeDriverService = ChromeDriverService.CreateDefaultService("E:\\Users\\Sam\\Documents\\Visual Studio 2017\\Projects\\Aniflix\\SeleniumBrowserStdLib\\bin\\Debug\\netstandard2.0");
             chromeDriverService.SuppressInitialDiagnosticInformation = true;
             chromeDriverService.HideCommandPromptWindow = true;
             _chromeDriver = new ChromeDriver(chromeDriverService, chromeOptions);

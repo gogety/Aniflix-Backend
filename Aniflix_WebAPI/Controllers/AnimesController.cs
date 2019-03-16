@@ -25,7 +25,7 @@ namespace Aniflix_WebAPI.Controllers
         [HttpGet]
         public IEnumerable<Anime> GetAnimes(int? more = 0)
         {
-            BaseConnector connector = AnilinkzConnector.Connector;
+            BaseConnector connector = AniWatcher.Connector;
             //List<Anime> list = connector.GetAnimesList(_aniContext);
             //  var animes = _aniContext.Animes.Include(a => a.Episodes);
             if (false) { 

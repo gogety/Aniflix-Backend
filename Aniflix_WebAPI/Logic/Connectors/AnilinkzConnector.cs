@@ -9,7 +9,7 @@ using SeleniumBrowserStdLib;
 
 namespace Aniflix_WebAPI.Logic.Connectors
 {
-    public class AnilinkzConnector : BaseConnector
+    public class AniWatcher : BaseConnector
     {
         private static BaseConnector connector;
 
@@ -19,10 +19,10 @@ namespace Aniflix_WebAPI.Logic.Connectors
 
         private string _baseURLMobile;
 
-        private AnilinkzConnector()
+        private AniWatcher()
         {
-            _baseURL = "http://anilinkz.to";
-            _baseURLMobile = "http://m.anilinkz.to";
+            _baseURL = "http://aniwatcher.com";
+            _baseURLMobile = "http://www.aniwatcher.com";
             _filterUncensored = true;
             _lastPageLoaded = 0;
         }
@@ -31,7 +31,7 @@ namespace Aniflix_WebAPI.Logic.Connectors
             get
             {
                 if (connector == null)
-                    connector = new AnilinkzConnector();
+                    connector = new AniWatcher();
                 return connector;
             }
         }
@@ -47,14 +47,14 @@ namespace Aniflix_WebAPI.Logic.Connectors
             string animeTitle = node.QuerySelector("a.ser").Attributes["Title"].Value;
             string title = node.QuerySelector("span.title").InnerText;
             string added = string.Empty;
-            try
-            {
-                added = node.QuerySelector("small").InnerText;
-            }
-            catch
-            {
+            //try
+            //{
+            //    added = node.QuerySelector("small").InnerText;
+            //}
+            //catch
+            //{
                 added = "Today";
-            }
+            //}
 
             string detailsURL = node.QuerySelector("a.ep").Attributes["href"].Value;
 
@@ -99,11 +99,14 @@ namespace Aniflix_WebAPI.Logic.Connectors
         {
             if (!String.IsNullOrEmpty(episode.VideoURL))
                 return episode.VideoURL;
-            string sourcePageURL = getSourcePageURL(episode.DetailsURL, "4up");
+            string sourcePageURL = getSourcePageURL(episode.DetailsURL, "sMango");
             //sMango sources do not link the video directly, it is necessary to load the linked page to get to the source file
-            string sourceHostURL = BrowserHelper.ExecuteWebRequestHTTPWithJs(FormatHttp(sourcePageURL), xPathFilter : "//*[@class='spart']/iframe", attribute:"src", timeout: 10);
+            string sourceHostURL = BrowserHelper.ExecuteWebRequestHTTPWithJs(FormatHttp(_baseURL+sourcePageURL), xPathFilter : "//*[@class='spart']/iframe", attribute:"src", timeout: 10);
             //string sMangoVideoLink = BrowserHelper.ExecuteWebRequestHTTPWithJs(FormatHttp(sMangoSourceLink), xPathFilter: "//*[@id='mgvideo_html5_api']", attribute: "src", timeout : 10 );
-            string videoURL = BrowserHelper.ExecuteWebRequestHTTPWithJs(FormatHttp(sourceHostURL), xPathFilter: "//*[@class='jw-video jw-reset']", attribute: "src", timeout : 10 );
+            //string videoURL = BrowserHelper.ExecuteWebRequestHTTPWithJs(FormatHttp(sourceHostURL), xPathFilter: "//*[@class='jw-video jw-reset']", attribute: "src", timeout : 10 );
+            string videoURL = BrowserHelper.ExecuteWebRequestHTTPWithJs(FormatHttp(sourceHostURL), xPathFilter: "//*[@id='mgvideo_html5_api']", attribute: "src", timeout: 10);
+
+            
 
             // TODO : error handling
             if (!videoURL.Contains("ERROR"))
@@ -131,7 +134,7 @@ namespace Aniflix_WebAPI.Logic.Connectors
             SMParams = sources.Descendants("a").ToList<HtmlNode>();
             //the first sMango link is usually better quality but also slower...
             //HtmlNode sMangoFirstSource = SMParams.FirstOrDefault(e => e.InnerText == "sMango");
-            //SMParams = SMParams.Where(e => e.InnerText == "sMango").ToList();
+            SMParams = SMParams.Where(e => e.InnerText == "sMango").ToList();
             SMParams = SMParams.Where(e => e.InnerText == source).ToList();
             HtmlNode sMangoFirstSource = SMParams.Count>1 ? SMParams[0]:SMParams[0];
 

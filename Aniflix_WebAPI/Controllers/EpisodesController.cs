@@ -29,7 +29,7 @@ namespace Aniflix_WebAPI.Controllers
             {
                 // Get all episodes that are not already in the database
                 
-                foreach (Episode epi in AnilinkzConnector.Connector.GetEpisodesList())
+                foreach (Episode epi in AniWatcher.Connector.GetEpisodesList())
                 {
                     if (_context.Episodes.Find(epi.Id) == null)
                     {
@@ -66,7 +66,7 @@ namespace Aniflix_WebAPI.Controllers
                 return NotFound();
             }
             Boolean needsUpdate = String.IsNullOrEmpty(episode.VideoURL);
-            string videoURL = AnilinkzConnector.Connector.GetVideo(episode);
+            string videoURL = AniWatcher.Connector.GetVideo(episode);
             if (needsUpdate)
             {
                 _context.Update(episode);
