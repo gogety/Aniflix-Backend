@@ -11,8 +11,9 @@ namespace Aniflix_WebAPI.Models
         // TODO : handle id in db context
         public string Id { get; set; }
         public string Title { get; set; }
+        public string FullTitle { get; set; }
         public string AnimeTitle { get; set; }
-
+        
         public string AnimeId { get; set; }
         public Anime Anime { get; set; }
         

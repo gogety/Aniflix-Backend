@@ -57,9 +57,8 @@ namespace Aniflix_WebAPI.Controllers
             {
                 return BadRequest(ModelState);
             }
-            
+
             var episode = await _context.Episodes.SingleAsync(m => m.Id == id);
-            
 
             if (episode == null)
             {

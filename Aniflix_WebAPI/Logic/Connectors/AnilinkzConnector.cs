@@ -36,9 +36,16 @@ namespace Aniflix_WebAPI.Logic.Connectors
             }
         }
 
-        protected override Episode CreateEpisode(object obj)
+        protected override Episode CreateEpisodeFromListing(object obj)
         {
+
             HtmlNode node;
+            if (!(obj is HtmlNode))
+            {
+                throw new InvalidCastException();
+            }
+            node = (HtmlNode)obj;
+
             if (!(obj is HtmlNode))
             {
                 throw new InvalidCastException();
@@ -57,17 +64,20 @@ namespace Aniflix_WebAPI.Logic.Connectors
             //}
 
             string detailsURL = node.QuerySelector("a.ep").Attributes["href"].Value;
+            string fullTitle = node.QuerySelector("a.ep").Attributes["title"].Value;
+
 
             return new Episode
             {
                 AnimeId = DataHelper.CreateMD5(animeTitle),
-                Id = DataHelper.CreateMD5($"{animeTitle}{title}"),
+                Id = DataHelper.CreateMD5($"{animeTitle}{title}{detailsURL}"),
                 Title = title,
+                FullTitle = fullTitle,
                 DetailsURL = detailsURL
             };
         }
 
-        protected override Anime CreateAnime(object obj)
+        protected override Anime CreateAnimeFromListing(object obj)
         {
             HtmlNode node;
             if (!(obj is HtmlNode))
@@ -91,9 +101,46 @@ namespace Aniflix_WebAPI.Logic.Connectors
                 Id = DataHelper.CreateMD5(animeTitle),
                 HomeUrl = homeURL,
                 ImgUrl = imgURL,
-                Mature = animeTitle.ToLower().Contains("uncensored")
+                Mature = animeTitle.ToLower().Contains("uncensored"),
+                FullyLoaded = false
             };
         }
+
+        protected void AddNewEpisodeFromAnimeDetailsPageToContext(object obj, AniContext context, Anime anime)
+        {
+            HtmlNode node;
+            if (!(obj is HtmlNode))
+            {
+                throw new InvalidCastException();
+            }
+            node = (HtmlNode)obj;
+
+            string animeTitle = anime.Title;
+            string title = node.QuerySelector("span.title").InnerText;
+
+            string added = string.Empty;
+            string detailsURL = node.QuerySelector("a").Attributes["href"].Value;
+            string id = DataHelper.CreateMD5($"{animeTitle}{title}{detailsURL}");
+            string fullTitle = node.QuerySelector("a").Attributes["title"].Value;
+
+            if (context.Episodes.Find(id) == null)
+            {
+                context.Add(new Episode
+                {
+                    AnimeId = DataHelper.CreateMD5(animeTitle),
+                    Id = id,
+                    Title = title,
+                    FullTitle = fullTitle,
+                    DetailsURL = detailsURL
+                });
+            }
+            return;
+        }
+
+        //protected Anime UpdateAnimeFromAnimeDetailsPage(object obj, Anime anime)
+        //{
+
+        //}
 
         public override string GetVideo(Episode episode)
         {
@@ -123,7 +170,43 @@ namespace Aniflix_WebAPI.Logic.Connectors
             }
             getAndLoadTrendingAndLatestEpisodes(context, loadBulk);
         }
-       
+
+        public override void LoadAnimeDetails(AniContext context, Anime anime)
+        {
+            HtmlDocument doc = BrowserHelper.ExecuteWebRequestHTTPWithJsDoc($"{_baseURL}{anime.HomeUrl}", "//main", "//main");
+            int numberOfPages;
+            List<HtmlNode> tempNode = doc.DocumentNode.SelectNodes("//div[@id='pagenavi']").Descendants("a").ToList<HtmlNode>();
+
+            foreach (HtmlNode node in doc.DocumentNode.SelectNodes("//ul[@id='serieslist']").Descendants("li"))
+            {
+                AddNewEpisodeFromAnimeDetailsPageToContext(node, context, anime);
+            }
+            //need to try catch here
+            if (tempNode.Count > 0) { 
+                numberOfPages = Convert.ToInt16(tempNode[tempNode.Count - 2].InnerText);
+                GetAndLoadEpisodes(context, anime, 2, numberOfPages);
+            }
+            anime.FullyLoaded = true;
+        }
+
+        public void GetAndLoadEpisodes(AniContext context, Anime anime, int fromPage = 1, int upToPage=1)
+        {
+            if (fromPage > upToPage)
+                return;
+
+            HtmlDocument doc = BrowserHelper.ExecuteWebRequestHTTPWithJsDoc($"{_baseURL}{anime.HomeUrl}?page={fromPage}", "//ul[@id='serieslist']", "//ul[@id='serieslist']");
+            
+            //get number of pages to fetch
+            foreach (HtmlNode node in doc.DocumentNode.SelectNodes("//ul[@id='serieslist']").Descendants("li"))
+            {
+                AddNewEpisodeFromAnimeDetailsPageToContext(node, context, anime);
+            }
+
+            GetAndLoadEpisodes(context, anime, ++fromPage, upToPage);
+
+            return;
+        }
+
         private string getSourcePageURL(string urlSuffix, string source)
         {
             List<HtmlNode> SMParams = new List<HtmlNode>();
@@ -154,7 +237,6 @@ namespace Aniflix_WebAPI.Logic.Connectors
                 getAndLoadLatestEpisodes(context, ++_lastPageLoaded, _lastPageLoaded+(loadBulk?10:0));
         }
 
-
         private void getAndLoadLatestEpisodes(AniContext context, int page = 1, int upToPage = 1)
         {
             if (page > upToPage)
@@ -182,8 +264,8 @@ namespace Aniflix_WebAPI.Logic.Connectors
             Anime anime = null;
             foreach (HtmlNode node in doc.DocumentNode.SelectNodes("//ul[@id='trendinglist']").Descendants("li"))
             {
-                episode = CreateEpisode(node);
-                anime = CreateAnime(node);
+                episode = CreateEpisodeFromListing(node);
+                anime = CreateAnimeFromListing(node);
                 if (_filterUncensored && !anime.Mature)
                 {
                     loadEpisodeAndAnimeToContext(context, episode, anime);
@@ -199,8 +281,8 @@ namespace Aniflix_WebAPI.Logic.Connectors
             {
                 foreach (HtmlNode node in doc.DocumentNode.QuerySelectorAll("#latestlist > li"))
                 {
-                    episode = CreateEpisode(node);
-                    anime = CreateAnime(node);
+                    episode = CreateEpisodeFromListing(node);
+                    anime = CreateAnimeFromListing(node);
 
                     if (_filterUncensored && !anime.Mature)
                     {
@@ -288,7 +370,7 @@ namespace Aniflix_WebAPI.Logic.Connectors
             Episode epi = null;
             foreach (HtmlNode node in doc.DocumentNode.SelectNodes("//ul[@id='trendinglist']").Descendants("li"))
             {
-                epi = CreateEpisode(node);
+                epi = CreateEpisodeFromListing(node);
                 if (_filterUncensored && !epi.AnimeTitle.ToLower().Contains("uncensored"))
                 {
                     list.Add(epi);
@@ -313,7 +395,7 @@ namespace Aniflix_WebAPI.Logic.Connectors
             {
                 foreach (HtmlNode node in doc.DocumentNode.QuerySelectorAll("#latestlist > li"))
                 {
-                    epi = CreateEpisode(node);
+                    epi = CreateEpisodeFromListing(node);
                     if (_filterUncensored && !epi.AnimeTitle.ToLower().Contains("uncensored"))
                     {
                         list.Add(epi);
@@ -363,7 +445,7 @@ namespace Aniflix_WebAPI.Logic.Connectors
             {
                 foreach (HtmlNode node in doc.DocumentNode.SelectNodes("//li"))
                 {
-                    epi = CreateEpisode(node);
+                    epi = CreateEpisodeFromListing(node);
                     if (!epi.AnimeTitle.ToLower().Contains("uncensored"))
                     {
                         list.Add(epi);

@@ -23,49 +23,58 @@ namespace Aniflix_WebAPI.Controllers
 
         // GET: api/Animes
         [HttpGet]
-        public IEnumerable<Anime> GetAnimes(int? more = 0)
+        public async Task<IActionResult>  GetAnimes(int? more = 0)
         {
-            BaseConnector connector = AniWatcher.Connector;
-            //List<Anime> list = connector.GetAnimesList(_aniContext);
-            //  var animes = _aniContext.Animes.Include(a => a.Episodes);
-            if (false) { 
-                foreach (var a in _context.Animes)
-                {
-                    _context.Remove(a);
-                }
-                foreach (var e in _context.Episodes)
-                {
-                    _context.Remove(e);
-                }
-            }
-            //foreach (Anime a in list)
-            //{
-            //    if (_aniContext.Animes.Find(a.Id) == null)
-            //    {
-            //        _aniContext.Animes.Add(a);
-            //    }
-            //    //foreach (Episode e in a.Episodes)
-            //    //{
-            //    //    if (_aniContext.Episodes.Find(e.Id) == null)
-            //    //    {
-            //    //        _aniContext.Episodes.Add(e);
-
-            //    //    }
-            //    //}
-            //}
-
-            //more logic needs to change. Currently, 0 => just load whatever is already in the db; 1 => load one more page; 2 => load many more pages
-            if (_context.Animes.Count() == 0)
-                more = 1;
-            if (more >0)
+            try
             {
-                connector.LoadAnimesList(_context, (more==2));
-                _context.SaveChanges();
-            }
+
+            
+                BaseConnector connector = AniWatcher.Connector;
+                //List<Anime> list = connector.GetAnimesList(_aniContext);
+                //  var animes = _aniContext.Animes.Include(a => a.Episodes);
+                if (false) { 
+                    foreach (var a in _context.Animes)
+                    {
+                        _context.Remove(a);
+                    }
+                    foreach (var e in _context.Episodes)
+                    {
+                        _context.Remove(e);
+                    }
+                }
+                //foreach (Anime a in list)
+                //{
+                //    if (_aniContext.Animes.Find(a.Id) == null)
+                //    {
+                //        _aniContext.Animes.Add(a);
+                //    }
+                //    //foreach (Episode e in a.Episodes)
+                //    //{
+                //    //    if (_aniContext.Episodes.Find(e.Id) == null)
+                //    //    {
+                //    //        _aniContext.Episodes.Add(e);
+
+                //    //    }
+                //    //}
+                //}
+
+                //more logic needs to change. Currently, 0 => just load whatever is already in the db; 1 => load one more page; 2 => load many more pages
+                if (_context.Animes.Count() == 0)
+                    more = 1;
+                if (more >0)
+                {
+                    connector.LoadAnimesList(_context, (more==2));
+                    _context.SaveChanges();
+                }
            
-            // we need to include the episodes, otherwise they are not loaded
-            // see https://docs.microsoft.com/en-us/ef/core/querying/related-data
-            return _context.Animes.Include(a => a.Episodes);
+                // we need to include the episodes, otherwise they are not loaded
+                // see https://docs.microsoft.com/en-us/ef/core/querying/related-data
+                return  Json( _context.Animes.Include(a => a.Episodes));
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex);
+            }
         }
 
         // GET: api/Animes/5
@@ -78,13 +87,28 @@ namespace Aniflix_WebAPI.Controllers
             }
 
             var anime = await _context.Animes.SingleOrDefaultAsync(m => m.Id == id);
-
+            
+           
             if (anime == null)
             {
                 return NotFound();
             }
+            if (anime.FullyLoaded)
+            {
+                _context.Entry(anime)
+                    .Collection(a => a.Episodes)
+                    .Load();
+                return Json(anime);
+            }
+            else
+            {
+                BaseConnector connector = AniWatcher.Connector;
+                connector.LoadAnimeDetails(_context,anime);
+                //is it ok to call the async version ? 
+                _context.SaveChanges();
 
-            return Ok(anime);
+                return Json(anime);
+            }
         }
 
         // PUT: api/Animes/5
