@@ -12,6 +12,7 @@ namespace Aniflix_WebAPI.Models
         public string Title { get; set; }
         public string HomeUrl { get; set; }
         public string ImgUrl { get; set; }
+        public string Description { get; set; }
         public bool Mature { get; set; }
         public bool FullyLoaded { get; set; }
         public ICollection<Episode> Episodes { get; set; }

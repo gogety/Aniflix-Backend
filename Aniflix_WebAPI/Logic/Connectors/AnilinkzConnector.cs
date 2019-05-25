@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Aniflix_WebAPI.Models;
 using HtmlAgilityPack.CssSelectors.NetCore;
 using HtmlAgilityPack;
-using SeleniumBrowserStdLib;
 
 namespace Aniflix_WebAPI.Logic.Connectors
 {
@@ -186,6 +185,23 @@ namespace Aniflix_WebAPI.Logic.Connectors
                 numberOfPages = Convert.ToInt16(tempNode[tempNode.Count - 2].InnerText);
                 GetAndLoadEpisodes(context, anime, 2, numberOfPages);
             }
+
+
+            //Could have used dov.QuerySelector("#series").innerText, but needed to remove the ad div text
+            // also, need to convert <br> into \n to be interpretted on the front-end side
+            HtmlNode series = doc.QuerySelector("#series");
+            series.RemoveChild(series.QuerySelector(".cjrm"));
+            string description = string.Empty;
+
+            foreach (HtmlNode node in series.ChildNodes)
+            {
+                if (node.Name == "br" && description != string.Empty)
+                    description += "\n";
+                else if(node.InnerText != string.Empty)
+                    description += node.InnerText;
+            }
+
+            anime.Description = description;
             anime.FullyLoaded = true;
         }
 

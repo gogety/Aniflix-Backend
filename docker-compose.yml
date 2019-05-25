@@ -1,0 +1,27 @@
+version: '3.4'
+
+services:
+  selenium-chrome-standalone:
+    image: selenium/standalone-chrome:3.141.59-neon
+    container_name: selenium-chrome-standalone
+    ports:
+    - "4444:4444"
+  aniflix_webapi:
+    image: aniflixwebapi
+    container_name: aniflix_webapi
+    build:
+      context: .
+      dockerfile: Aniflix_WebAPI/Dockerfile
+    depends_on:
+    - selenium-chrome-standalone
+    ports:
+    - "8083:80"
+  aniflix_ui:
+    image: aniflixui
+    #build:
+    #  context: E:/SAM/Dev/Angular/aniflix-ui
+    #  dockerfile: Dockerfile
+    depends_on:
+    - aniflix_webapi
+    ports:
+    - "8082:80"
