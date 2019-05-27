@@ -51,27 +51,33 @@ namespace Aniflix_WebAPI.Controllers
 
         // GET: api/Episodes/5
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetEpisode([FromRoute] string id)
+        public async Task<IActionResult> GetEpisode(string id, string repoLinkId)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var episode = await _context.Episodes.SingleAsync(m => m.Id == id);
+            var episode = await _context.Episodes.Include(e => e.SourceRepoLinks).SingleAsync(m => m.Id == id);
 
             if (episode == null)
             {
                 return NotFound();
             }
-            Boolean needsUpdate = String.IsNullOrEmpty(episode.VideoURL);
-            string videoURL = AniWatcher.Connector.GetVideo(episode);
-            if (needsUpdate)
+            //Boolean needsUpdate = String.IsNullOrEmpty(episode.VideoURL);
+
+            if (episode.SourceRepoLinks.Count == 0)
             {
-                _context.Update(episode);
+                AniWatcher.Connector.LoadEpisodeLinks(_context,episode);
+                //_context.Update(episode);
                 // Maybe we should not wait for the save confirmation ?
                 await _context.SaveChangesAsync();
             }
+
+            if (string.IsNullOrEmpty(repoLinkId))
+                return Json(episode);
+
+            string videoURL = AniWatcher.Connector.GetVideo(_context, episode, repoLinkId);
 
             return Json(videoURL);
         }

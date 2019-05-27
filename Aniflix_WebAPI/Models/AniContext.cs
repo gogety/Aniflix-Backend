@@ -26,7 +26,9 @@ namespace Aniflix_WebAPI.Models
             modelBuilder.Entity<Anime>()
                 .HasMany(a => a.Episodes)
                 .WithOne(e => e.Anime);
-
+            
+            modelBuilder.Entity<Episode>()
+                .HasMany(e => e.SourceRepoLinks);
 
             //modelBuilder.Entity<Episode>()
             //    .HasKey(e => DataHelper.CreateMD5($"{e.Anime.Title} {e.Title}"));
@@ -34,6 +36,7 @@ namespace Aniflix_WebAPI.Models
 
         public DbSet<Anime> Animes { get; set; }
         public DbSet<Episode> Episodes { get; set; }
+        public DbSet<EpisodeSourceRepoLink> EpisodeSourceRepoLinks{ get; set; }
 
     }
 }

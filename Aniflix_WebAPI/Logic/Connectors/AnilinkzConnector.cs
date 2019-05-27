@@ -141,23 +141,32 @@ namespace Aniflix_WebAPI.Logic.Connectors
 
         //}
 
-        public override string GetVideo(Episode episode)
+        public override string GetVideo(AniContext context, Episode episode, string repoLinkId)
         {
-            if (!String.IsNullOrEmpty(episode.VideoURL))
-                return episode.VideoURL;
-            string sourcePageURL = getSourcePageURL(episode.DetailsURL, "sMango");
+            //EpisodeSourceRepoLink sourceRepoLink = episode.SourceRepoLinks.Single(l => l.Id == repoLinkId);
+            EpisodeSourceRepoLink sourceRepoLink = episode.SourceRepoLinks.First(l => l.SourceName == "sMango");
+
+            if (!String.IsNullOrEmpty(sourceRepoLink.SourceLink) && DateTime.Now - sourceRepoLink.LastUpdate < TimeSpan.FromMinutes(15) )
+                return sourceRepoLink.SourceLink;
+            //string sourcePageURL = getSourcePageURL(episode.DetailsURL, "sMango");
+
+            string sourcePageURL = sourceRepoLink.RepoLink;
             //sMango sources do not link the video directly, it is necessary to load the linked page to get to the source file
+            // TODO : let the source interpreter retrieve the URL from there
             string sourceHostURL = BrowserHelper.ExecuteWebRequestHTTPWithJs(FormatHttp(_baseURL+sourcePageURL), xPathFilter : "//*[@class='spart']/iframe", attribute:"src", timeout: 10);
             //string sMangoVideoLink = BrowserHelper.ExecuteWebRequestHTTPWithJs(FormatHttp(sMangoSourceLink), xPathFilter: "//*[@id='mgvideo_html5_api']", attribute: "src", timeout : 10 );
             //string videoURL = BrowserHelper.ExecuteWebRequestHTTPWithJs(FormatHttp(sourceHostURL), xPathFilter: "//*[@class='jw-video jw-reset']", attribute: "src", timeout : 10 );
             string videoURL = BrowserHelper.ExecuteWebRequestHTTPWithJs(FormatHttp(sourceHostURL), xPathFilter: "//*[@id='mgvideo_html5_api']", attribute: "src", timeout: 10);
 
-            
-
             // TODO : error handling
             if (!videoURL.Contains("ERROR"))
-                episode.VideoURL = FormatHttp(videoURL);
-            return episode.VideoURL;
+            {
+                context.Update(sourceRepoLink);
+                sourceRepoLink.SourceLink = FormatHttp(videoURL);
+                sourceRepoLink.LastUpdate = DateTime.Now;
+                context.SaveChangesAsync();
+            }
+            return sourceRepoLink.SourceLink;
 
         }
 
@@ -205,6 +214,36 @@ namespace Aniflix_WebAPI.Logic.Connectors
             anime.FullyLoaded = true;
         }
 
+        public override void LoadEpisodeLinks(AniContext context, Episode episode)
+        {
+            HtmlDocument doc = BrowserHelper.ExecuteWebRequestHTTPWithJsDoc($"{_baseURL}{episode.DetailsURL}", "//div[@id='sources']", "//div[@id='sources']");
+
+            string sourceName = string.Empty;
+            string link = string.Empty;
+            string id = string.Empty;
+
+            foreach (HtmlNode node in doc.DocumentNode.SelectNodes("//a"))
+            {
+                link = node.Attributes["href"].Value;
+                sourceName = node.InnerText;
+
+                id = DataHelper.CreateMD5($"{sourceName} {link}");
+                if (context.EpisodeSourceRepoLinks.Find(id) == null)
+                {
+                    context.EpisodeSourceRepoLinks.Add(new EpisodeSourceRepoLink
+                    {
+                        Id = id,
+                        Episode = episode,
+                        RepoLink = link,
+                        SourceName = sourceName,
+                        SourceLink = string.Empty,
+                        LastUpdate = DateTime.Now
+                    }
+                    );
+                }
+            }
+        }
+
         public void GetAndLoadEpisodes(AniContext context, Anime anime, int fromPage = 1, int upToPage=1)
         {
             if (fromPage > upToPage)
@@ -233,7 +272,7 @@ namespace Aniflix_WebAPI.Logic.Connectors
             SMParams = sources.Descendants("a").ToList<HtmlNode>();
             //the first sMango link is usually better quality but also slower...
             //HtmlNode sMangoFirstSource = SMParams.FirstOrDefault(e => e.InnerText == "sMango");
-            SMParams = SMParams.Where(e => e.InnerText == "sMango").ToList();
+            //SMParams = SMParams.Where(e => e.InnerText == "sMango").ToList();
             SMParams = SMParams.Where(e => e.InnerText == source).ToList();
             HtmlNode sMangoFirstSource = SMParams.Count>1 ? SMParams[0]:SMParams[0];
 

@@ -14,15 +14,21 @@ namespace Aniflix_WebAPI.Models
         public string FullTitle { get; set; }
         public string AnimeTitle { get; set; }
         
+        //I don't know why we need both Anime and AnimeId ?
         public string AnimeId { get; set; }
         public Anime Anime { get; set; }
         
         // TODO : DetailsURL should not be saved here, as it depends on the connector
         public string DetailsURL { get; set; }
+
+        public ICollection<EpisodeSourceRepoLink> SourceRepoLinks { get; set; }
+
+        // TODO : this should go in a separate table?, as we may have multiple links (by repo and by source)
         public string VideoURL { get; set; }
 
         public Episode() {
             VideoURL = string.Empty;
+            SourceRepoLinks = new List<EpisodeSourceRepoLink>();
         }
 
         public Episode(string title, string animeId, string detailsURL)
