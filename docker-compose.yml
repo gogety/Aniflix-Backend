@@ -17,7 +17,7 @@ services:
     ports:
     - "8083:80"
   aniflix_ui:
-    image: aniflixui
+    image: anifluxui:1.0
     #build:
     #  context: E:/SAM/Dev/Angular/aniflix-ui
     #  dockerfile: Dockerfile
