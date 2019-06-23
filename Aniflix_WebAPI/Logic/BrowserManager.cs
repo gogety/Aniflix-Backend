@@ -52,8 +52,8 @@ namespace Aniflix_WebAPI.Logic
             //_chromeDriver = new ChromeDriver(chromeDriverService, chromeOptions);
             //_chromeDriver = new RemoteWebDriver(new Uri("http://selenium-chrome-standalone:4444/wd/hub"), chromeOptions);
             //_chromeDriver = new RemoteWebDriver(new Uri("http://localhost:4444/wd/hub"), chromeOptions);
-            //return new RemoteWebDriver(new Uri("http://selenium-chrome-standalone:4444/wd/hub"), chromeOptions);
-            return new RemoteWebDriver(new Uri("http://localhost:4444/wd/hub"), chromeOptions);
+            return new RemoteWebDriver(new Uri("http://selenium-chrome-standalone:4444/wd/hub"), chromeOptions);
+            //return new RemoteWebDriver(new Uri("http://localhost:4444/wd/hub"), chromeOptions);
 
         }
 
