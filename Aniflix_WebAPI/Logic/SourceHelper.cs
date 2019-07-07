@@ -15,7 +15,7 @@ namespace Aniflix_WebAPI.Logic
            // {"rVid", new string[]{"//source[@label='720p']", "src"}},
            // {"Vev", new string[]{"//video", "src"}},
             {"Tiwi", new string[]{"//video", "src"}},
-            {"4up", new string[]{"//video", "src"}},
+           // {"4up", new string[]{"//video", "src"}},
             {"Pbb", new string[]{"//video", "src"}},
             {"vZoo", new string[]{"//video", "src"}},
             {"Byzo", new string[]{"//video", "src"}},

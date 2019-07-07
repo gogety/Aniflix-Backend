@@ -79,7 +79,7 @@ namespace Aniflix_WebAPI.Controllers
 
         // GET: api/Animes/5
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetAnime([FromRoute] string id)
+        public async Task<IActionResult> GetAnime([FromRoute] string id, [FromQuery] string homeURL = "")
         {
             if (!ModelState.IsValid)
             {
@@ -88,7 +88,13 @@ namespace Aniflix_WebAPI.Controllers
 
             var anime = await _context.Animes.SingleOrDefaultAsync(m => m.Id == id);
             
-           
+            if (anime == null && ! String.IsNullOrEmpty(homeURL) )
+            {
+                BaseConnector connector = AniWatcher.Connector;
+                anime = connector.LoadAnimeFromHomeURL(_context, homeURL);
+                _context.SaveChanges();
+            }
+
             if (anime == null)
             {
                 return NotFound();

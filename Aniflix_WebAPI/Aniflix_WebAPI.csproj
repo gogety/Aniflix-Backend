@@ -29,4 +29,6 @@
     <PackageReference Include="Selenium.WebDriver.ChromeDriver" Version="73.0.3683.68" />
   </ItemGroup>
 
+  <ProjectExtensions><VisualStudio><UserProperties Properties_4launchSettings_1json__JSONSchema="" /></VisualStudio></ProjectExtensions>
+
 </Project>

@@ -24,8 +24,10 @@ namespace Aniflix_WebAPI.Logic.Connectors
         public abstract List<Episode> GetEpisodesList();
         public abstract List<Anime> GetAnimesList(AniContext context);
         public abstract void LoadAnimesList(AniContext context, bool loadBulk);
-        public abstract void LoadAnimeDetails(AniContext context, Anime anime);
-        public abstract void LoadEpisodeLinks(AniContext context, Episode episode);
+        public abstract void LoadAnimeDetails(AniContext context, Anime anime, Object obj = null);
+        public abstract Anime LoadAnimeFromHomeURL(AniContext context, string homeURL);
+        public abstract Episode LoadEpisodeLinksFromDetailsURL(AniContext context, string detailsURL);
+        public abstract void LoadEpisodeLinks(AniContext context, Episode episode, Object obj = null);
         public abstract string GetVideo(AniContext context, Episode episode, string repoLinkId);
 
     }

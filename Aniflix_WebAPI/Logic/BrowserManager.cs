@@ -11,6 +11,7 @@ namespace Aniflix_WebAPI.Logic
     {
         //private static IWebDriver driver;
         private const bool DEBUG = false;
+        private const bool USEDOCKERFORSELENIUM = true;
         public BrowserManager(bool useAdBlock)
         {
             ////Create chrome driver
@@ -40,7 +41,6 @@ namespace Aniflix_WebAPI.Logic
             if (useAdBlock)  chromeOptions.AddArgument("user-data-dir=/app/bin/Debug/netcorapp2.0/BrowserProfile");
 
 
-            chromeOptions.AddArgument("headless");
             chromeOptions.AddArgument("disable-gpu");
             //Do not wait for page to load completely, as we handle the wait ourselves
             chromeOptions.PageLoadStrategy = PageLoadStrategy.None;
@@ -52,8 +52,20 @@ namespace Aniflix_WebAPI.Logic
             //_chromeDriver = new ChromeDriver(chromeDriverService, chromeOptions);
             //_chromeDriver = new RemoteWebDriver(new Uri("http://selenium-chrome-standalone:4444/wd/hub"), chromeOptions);
             //_chromeDriver = new RemoteWebDriver(new Uri("http://localhost:4444/wd/hub"), chromeOptions);
-            return new RemoteWebDriver(new Uri("http://selenium-chrome-standalone:4444/wd/hub"), chromeOptions);
-            //return new RemoteWebDriver(new Uri("http://localhost:4444/wd/hub"), chromeOptions);
+            //return new RemoteWebDriver(new Uri("http://selenium-chrome-standalone:4444/wd/hub"), chromeOptions);
+            if (USEDOCKERFORSELENIUM)
+            {
+                chromeOptions.AddArgument("headless");
+                return new RemoteWebDriver(new Uri("http://localhost:4444/wd/hub"), chromeOptions);
+            }
+            else
+            {
+
+                ChromeDriverService chromeDriverService = ChromeDriverService.CreateDefaultService("C:\\SAM\\Selenium");
+                chromeDriverService.SuppressInitialDiagnosticInformation = true;
+                chromeDriverService.HideCommandPromptWindow = true;
+                return new ChromeDriver(chromeDriverService, chromeOptions);
+            }
 
         }
 

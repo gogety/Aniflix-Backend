@@ -51,7 +51,7 @@ namespace Aniflix_WebAPI.Controllers
 
         // GET: api/Episodes/5
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetEpisode(string id, string repoLinkId)
+        public async Task<IActionResult> GetEpisode(string id, string repoLinkId, string detailsURL ="")
         {
             if (!ModelState.IsValid)
             {
@@ -59,6 +59,15 @@ namespace Aniflix_WebAPI.Controllers
             }
 
             var episode = await _context.Episodes.Include(e => e.SourceRepoLinks).SingleOrDefaultAsync(m => m.Id == id);
+
+            //TODO : merge this logic with the one below
+            if (episode == null && !String.IsNullOrEmpty(detailsURL))
+            {
+                BaseConnector connector = AniWatcher.Connector;
+                episode = connector.LoadEpisodeLinksFromDetailsURL(_context, detailsURL);
+                _context.SaveChanges();
+            }
+
 
             if (episode == null)
             {

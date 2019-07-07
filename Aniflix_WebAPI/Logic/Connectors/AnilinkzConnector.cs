@@ -59,7 +59,7 @@ namespace Aniflix_WebAPI.Logic.Connectors
             //}
             //catch
             //{
-                added = "Today";
+            added = "Today";
             //}
 
             string detailsURL = node.QuerySelector("a.ep").Attributes["href"].Value;
@@ -86,7 +86,7 @@ namespace Aniflix_WebAPI.Logic.Connectors
             node = (HtmlNode)obj;
 
             string animeTitle = node.QuerySelector("a.ser").Attributes["Title"].Value;
-            
+
             string imgURL = node.QuerySelector("span.img").Attributes["style"].Value;
             imgURL = imgURL.Substring(imgURL.IndexOf("(") + 1);
             imgURL = imgURL.Substring(0, imgURL.IndexOf(")"));
@@ -146,14 +146,14 @@ namespace Aniflix_WebAPI.Logic.Connectors
             EpisodeSourceRepoLink sourceRepoLink = episode.SourceRepoLinks.Single(l => l.Id == repoLinkId);
             //EpisodeSourceRepoLink sourceRepoLink = episode.SourceRepoLinks.First(l => l.SourceName == "sMango");
 
-            if (!String.IsNullOrEmpty(sourceRepoLink.SourceLink) && DateTime.Now - sourceRepoLink.LastUpdate < TimeSpan.FromMinutes(15) )
+            if (!String.IsNullOrEmpty(sourceRepoLink.SourceLink) && DateTime.Now - sourceRepoLink.LastUpdate < TimeSpan.FromMinutes(15))
                 return sourceRepoLink.SourceLink;
             //string sourcePageURL = getSourcePageURL(episode.DetailsURL, "sMango");
 
             string sourcePageURL = sourceRepoLink.RepoLink;
             //sMango sources do not link the video directly, it is necessary to load the linked page to get to the source file
             // TODO : let the source interpreter retrieve the URL from there
-            string sourceHostURL = BrowserHelper.ExecuteWebRequestHTTPWithJs(FormatHttp(_baseURL+sourcePageURL), xPathFilter : "//*[@class='spart']/iframe", attribute:"src", timeout: 10);
+            string sourceHostURL = BrowserHelper.ExecuteWebRequestHTTPWithJs(FormatHttp(_baseURL + sourcePageURL), xPathFilter: "//*[@class='spart']/iframe", attribute: "src", timeout: 10);
             //string sMangoVideoLink = BrowserHelper.ExecuteWebRequestHTTPWithJs(FormatHttp(sMangoSourceLink), xPathFilter: "//*[@id='mgvideo_html5_api']", attribute: "src", timeout : 10 );
             //string videoURL = BrowserHelper.ExecuteWebRequestHTTPWithJs(FormatHttp(sourceHostURL), xPathFilter: "//*[@class='jw-video jw-reset']", attribute: "src", timeout : 10 );
             //string videoURL = BrowserHelper.ExecuteWebRequestHTTPWithJs(FormatHttp(sourceHostURL), xPathFilter: "//*[@id='mgvideo_html5_api']", attribute: "src", timeout: 10);
@@ -180,9 +180,58 @@ namespace Aniflix_WebAPI.Logic.Connectors
             getAndLoadTrendingAndLatestEpisodes(context, loadBulk);
         }
 
-        public override void LoadAnimeDetails(AniContext context, Anime anime)
+        public override Anime LoadAnimeFromHomeURL(AniContext context, string homeURL)
         {
-            HtmlDocument doc = BrowserHelper.ExecuteWebRequestHTTPWithJsDoc($"{_baseURL}{anime.HomeUrl}", "//main", "//div[@id='pagenavi']",timeout:30);
+            HtmlDocument doc = BrowserHelper.ExecuteWebRequestHTTPWithJsDoc($"{_baseURL}{homeURL}", "//main", "//div[@id='pagenavi']", timeout: 30);
+
+            string animeTitle = doc.DocumentNode.QuerySelector(".h2series").InnerText;
+            //must remove the "episodes" keyword from the title for the ID to match;
+            animeTitle = animeTitle.Substring(0, animeTitle.IndexOf("Episodes")-1);
+            //node.QuerySelector("a.ser").Attributes["Title"].Value;
+
+            HtmlNode series = doc.QuerySelector("#series");
+
+            string imgURL = series.QuerySelector(".imgseries > img").Attributes["src"].Value;
+            imgURL = imgURL.Substring(imgURL.IndexOf("(") + 1);
+            //imgURL = imgURL.Substring(0, imgURL.IndexOf(")"));
+            imgURL = $"{_baseURL}{imgURL}";
+
+            Anime anime = new Anime
+            {
+                Title = animeTitle,
+                Id = DataHelper.CreateMD5(animeTitle),
+                HomeUrl = homeURL,
+                ImgUrl = imgURL,
+                Mature = animeTitle.ToLower().Contains("uncensored"),
+                FullyLoaded = false
+            };
+
+            //need to add the anime to the context here, before we do more with it ?
+            context.Animes.Add(anime);
+            //context.SaveChanges();
+
+            LoadAnimeDetails(context, anime, doc);
+
+            return anime;
+        }
+
+      
+
+
+        public override void LoadAnimeDetails(AniContext context, Anime anime, Object docObj = null)
+        {
+
+            HtmlDocument doc;
+
+            if (docObj == null)
+            {
+                doc = BrowserHelper.ExecuteWebRequestHTTPWithJsDoc($"{_baseURL}{anime.HomeUrl}", "//main", "//div[@id='pagenavi']", timeout: 30);
+            }
+            else
+            {
+                doc = (HtmlDocument)docObj;
+            }
+
             int numberOfPages;
             List<HtmlNode> tempNode = doc.DocumentNode.SelectNodes("//div[@id='pagenavi']").Descendants("a").ToList<HtmlNode>();
 
@@ -213,23 +262,64 @@ namespace Aniflix_WebAPI.Logic.Connectors
 
             anime.Description = description;
             anime.FullyLoaded = true;
+            //context.Animes.Update(anime);
         }
 
-        public override void LoadEpisodeLinks(AniContext context, Episode episode)
+        public override Episode LoadEpisodeLinksFromDetailsURL(AniContext context, string detailsURL)
         {
-            HtmlDocument doc = BrowserHelper.ExecuteWebRequestHTTPWithJsDoc($"{_baseURL}{episode.DetailsURL}", "//div[@id='sources']", "//div[@id='sources']");
+            HtmlDocument doc = BrowserHelper.ExecuteWebRequestHTTPWithJsDoc($"{_baseURL}{detailsURL}", xPathWaitFor: "//div[@id='sources']");
+
+            HtmlNode node = doc.DocumentNode;
+
+            string animeTitle = node.QuerySelector(".center>a").Attributes["title"].Value.Trim();
+            string title = node.QuerySelector("span.title").InnerText.Trim();
+            string added = string.Empty;
+            added = "Today";
+            string fullTitle = node.QuerySelector(".h2episode").InnerText.Trim(); 
+
+            Episode episode = new Episode
+            {
+                AnimeId = DataHelper.CreateMD5(animeTitle),
+                Id = DataHelper.CreateMD5($"{animeTitle}{title}{detailsURL}"),
+                Title = title,
+                FullTitle = fullTitle,
+                DetailsURL = detailsURL
+            };
+            context.Episodes.Add(episode);
+
+            LoadEpisodeLinks(context, episode, doc);
+
+            return episode;
+        }
+
+        public override void LoadEpisodeLinks(AniContext context, Episode episode, Object document = null)
+        {
+
+            HtmlDocument doc;
+
+            if (document != null)
+            {
+                doc = (HtmlDocument)document;
+            }
+            else
+            {
+                doc = BrowserHelper.ExecuteWebRequestHTTPWithJsDoc($"{_baseURL}{episode.DetailsURL}", "//div[@id='sources']", "//div[@id='sources']");
+            }
 
             string sourceName = string.Empty;
             string link = string.Empty;
             string id = string.Empty;
+            EpisodeSourceRepoLink eSR;
 
-            foreach (HtmlNode node in doc.DocumentNode.SelectNodes("//a"))
+
+            foreach (HtmlNode node in doc.DocumentNode.SelectNodes("//div[@id='sources']/a"))
             {
                 link = node.Attributes["href"].Value;
                 sourceName = node.InnerText;
 
                 id = DataHelper.CreateMD5($"{sourceName} {link}");
-                if (context.EpisodeSourceRepoLinks.Find(id) == null && SourceHelper.IsImplemented(sourceName))
+                eSR = context.EpisodeSourceRepoLinks.Find(id);
+                if (eSR == null && SourceHelper.IsImplemented(sourceName))
                 {
                     context.EpisodeSourceRepoLinks.Add(new EpisodeSourceRepoLink
                     {
@@ -241,6 +331,11 @@ namespace Aniflix_WebAPI.Logic.Connectors
                         LastUpdate = DateTime.Now
                     }
                     );
+                }
+                //Workaround, I don't understand why an episode create before the anime is completely loaded doesn't brin in the links
+                else if(eSR != null)
+                {
+                    eSR.Episode = episode;
                 }
             }
         }
